@@ -1,0 +1,166 @@
+esphome:
+  name: test-invernadero
+  on_boot:
+#     - priority: 800
+#       then:
+#         - switch.turn_off: switch_bomba
+#         - switch.turn_off: switch_cilindro
+     - priority: -100
+       then:
+          if:
+            condition:
+               binary_sensor.is_on: sensor_encendido
+            then:
+            - light.turn_on:
+                id: status_led
+                brightness: 100%
+                red: 100%
+                green: 0%
+                blue: 0%
+                effect: none
+            - switch.turn_on: switch_bomba
+            - switch.turn_on: switch_cilindro
+            else:
+            - light.turn_on:
+                id: status_led
+                brightness: 100%
+                red: 0%
+                green: 100%
+                blue: 0%
+                effect: none
+
+
+esp32:
+  board: nodemcu-32s
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+web_server:
+  port: 80
+
+ota:
+  safe_mode: false
+  password: "052ec2e05b7e7807b7b359167881e5ed"
+
+wifi:
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ssid: PixelJC
+  password: zaqxswcde
+  ap:
+    ssid: "Test-Invernadero"
+    password: "12345678"
+  reboot_timeout: 0s
+
+
+
+binary_sensor:
+  - platform: gpio
+    name: "Lleno"
+    pin:
+      number: 23
+      mode: INPUT_PULLUP
+      inverted: true
+    device_class: moisture
+    id: sensor_encendido
+    filters:
+      - delayed_on_off: 5000ms
+#    on_state:
+#      then:
+#        if:
+#          condition:
+#             binary_sensor.is_on: sensor_encendido
+#          then:
+#            - light.turn_on:
+#                id: status_led
+#                brightness: 100%
+#                red: 100%
+#                green: 0%
+#                blue: 0%
+#                effect: none
+#            - switch.turn_on: switch_bomba
+#            - switch.turn_on: switch_cilindro 
+#          else:
+#            - light.turn_on:
+#                id: status_led
+#                brightness: 100%
+#                red: 0%
+#                green: 100%
+#                blue: 0%
+#                effect: none
+    
+    
+    on_press:
+      then:
+        - light.turn_on:
+            id: status_led
+            brightness: 100%
+            red: 100%
+            green: 0%
+            blue: 0%
+        - switch.turn_on: switch_bomba
+        - switch.turn_on: switch_cilindro
+    on_release:
+      then:
+        - light.turn_on:
+            id: status_led
+            brightness: 100%
+            red: 100%
+            green: 100%
+            blue: 0%
+            effect: pulse
+
+  - platform: gpio
+    name: "Vacío"
+    pin:
+      number: 22
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on_off: 5000ms
+    device_class: moisture
+    id: sensor_apagado
+    on_press:
+      then:
+        - light.turn_on:
+            id: status_led
+            brightness: 100%
+            red: 100%
+            green: 100%
+            blue: 0%
+            effect: none
+    on_release:
+      then:
+        - switch.turn_off: switch_bomba
+        - switch.turn_off: switch_cilindro
+        - light.turn_on:
+            id: status_led
+            brightness: 100%
+            red: 0%
+            green: 100%
+            blue: 0%
+            effect: none
+
+switch:
+  - platform: gpio
+    pin: 25
+    name: "Bomba"
+    id: switch_bomba
+    inverted: true
+  - platform: gpio
+    pin: 26
+    name: "Cilindro"
+    id: switch_cilindro
+    inverted: true
+    
+light:
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812
+    pin: GPIO19
+    num_leds: 8
+    id: "status_led"
+    effects:
+      - pulse:
