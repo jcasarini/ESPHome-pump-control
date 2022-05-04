@@ -1,42 +1,21 @@
-esphome:
-  name: test-invernadero
-  on_boot:
-#     - priority: 800
-#       then:
-#         - switch.turn_off: switch_bomba
-#         - switch.turn_off: switch_cilindro
-     - priority: -100
-       then:
-          if:
-            condition:
-               binary_sensor.is_on: sensor_encendido
-            then:
-            - light.turn_on:
-                id: status_led
-                brightness: 100%
-                red: 100%
-                green: 0%
-                blue: 0%
-                effect: none
-            - switch.turn_on: switch_bomba
-            - switch.turn_on: switch_cilindro
-            else:
-            - light.turn_on:
-                id: status_led
-                brightness: 100%
-                red: 0%
-                green: 100%
-                blue: 0%
-                effect: none
-
-
 esp32:
   board: nodemcu-32s
   framework:
     type: arduino
+    
+esphome:
+  name: control-bombas
+  on_boot:
+    then:
+    - delay: 20s
+    - script.execute: action
+    - logger.log: "Running scripts..."
 
 # Enable logging
 logger:
+
+api:
+  reboot_timeout: 0s
 
 web_server:
   port: 80
@@ -47,120 +26,147 @@ ota:
 
 wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
-  ssid: PixelJC
-  password: zaqxswcde
+#  ssid: 
+#  password: zaqxswcde
+  ssid: "Acuaponia"
+  password: "H1dr0p0n14!"
+  
   ap:
     ssid: "Test-Invernadero"
     password: "12345678"
   reboot_timeout: 0s
 
+globals:
+  - id: limpiar
+    type: boolean
+    initial_value: "false"
 
+#dallas:
+#  pin: GPIO21
+
+#sensor:
+#  - platform: dallas
+#    address: 0xf2062140c0cf6628
+#    name: "Temperatura Agua Tanque"
 
 binary_sensor:
   - platform: gpio
     name: "Lleno"
     pin:
-      number: 23
+      number: 19
       mode: INPUT_PULLUP
       inverted: true
     device_class: moisture
     id: sensor_encendido
     filters:
       - delayed_on_off: 5000ms
-#    on_state:
-#      then:
-#        if:
-#          condition:
-#             binary_sensor.is_on: sensor_encendido
-#          then:
-#            - light.turn_on:
-#                id: status_led
-#                brightness: 100%
-#                red: 100%
-#                green: 0%
-#                blue: 0%
-#                effect: none
-#            - switch.turn_on: switch_bomba
-#            - switch.turn_on: switch_cilindro 
-#          else:
-#            - light.turn_on:
-#                id: status_led
-#                brightness: 100%
-#                red: 0%
-#                green: 100%
-#                blue: 0%
-#                effect: none
-    
-    
-    on_press:
-      then:
-        - light.turn_on:
-            id: status_led
-            brightness: 100%
-            red: 100%
-            green: 0%
-            blue: 0%
-        - switch.turn_on: switch_bomba
-        - switch.turn_on: switch_cilindro
-    on_release:
-      then:
-        - light.turn_on:
-            id: status_led
-            brightness: 100%
-            red: 100%
-            green: 100%
-            blue: 0%
-            effect: pulse
-
+#    on_press:
+#        - switch.turn_on: switch_bomba_limpieza
+#        - switch.turn_on: switch_cilindro
+#        - delay: 30s
+#        - switch.turn_off: switch_bomba_limpieza
+#        - switch.turn_off: switch_cilindro
+      
   - platform: gpio
     name: "Vacío"
     pin:
-      number: 22
+      number: 18
       mode: INPUT_PULLUP
       inverted: true
     filters:
       - delayed_on_off: 5000ms
     device_class: moisture
     id: sensor_apagado
+#   on_release:
+#      then:
+#        - switch.turn_off: switch_bomba_limpieza
+#        - switch.turn_off: switch_cilindro
+
+  - platform: gpio
+    name: "Apagado Pileta"
+    pin:
+      number: 17
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on_off: 5000ms
+    device_class: moisture
+    id: sensor_apagado_pileta
+#    on_release:
+#        - switch.turn_on: switch_bomba_pileta
+  - platform: gpio
+    name: "Boton 1"
+    pin:
+      number: 4
+      mode: INPUT_PULLUP
+      inverted: true
     on_press:
-      then:
-        - light.turn_on:
-            id: status_led
-            brightness: 100%
-            red: 100%
-            green: 100%
-            blue: 0%
-            effect: none
+        - switch.turn_on: switch_bomba_limpieza
     on_release:
-      then:
-        - switch.turn_off: switch_bomba
+        - switch.turn_off: switch_bomba_limpieza
+  - platform: gpio
+    name: "Boton 2"
+    pin:
+      number: 22
+      mode: INPUT_PULLUP
+      inverted: true
+    on_press:
+        - switch.turn_on: switch_cilindro
+    on_release:
         - switch.turn_off: switch_cilindro
-        - light.turn_on:
-            id: status_led
-            brightness: 100%
-            red: 0%
-            green: 100%
-            blue: 0%
-            effect: none
+  - platform: gpio
+    name: "Boton 3"
+    id: boton3
+    pin:
+      number: 33
+      mode: INPUT_PULLUP
+      inverted: true
 
 switch:
   - platform: gpio
     pin: 25
-    name: "Bomba"
-    id: switch_bomba
+    name: "Bomba Limpieza"
+    id: switch_bomba_limpieza
     inverted: true
+    restore_mode: ALWAYS_OFF
   - platform: gpio
     pin: 26
-    name: "Cilindro"
+    name: "Motor Cilindro"
     id: switch_cilindro
     inverted: true
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: 27
+    name: "Bomba Pileta"
+    id: switch_bomba_pileta
+    inverted: true
     
-light:
-  - platform: neopixelbus
-    type: GRB
-    variant: WS2812
-    pin: GPIO19
-    num_leds: 8
-    id: "status_led"
-    effects:
-      - pulse:
+script:
+  - id: action
+    then:
+    - while:
+        condition:
+          lambda: "return true;"
+        then:
+          - if:
+              condition:
+                lambda: "return id(limpiar);"
+              then:
+                 - switch.turn_on: switch_cilindro
+                 - switch.turn_on: switch_bomba_limpieza
+                 - delay: 6s
+                 - switch.turn_off: switch_cilindro
+                 - switch.turn_off: switch_bomba_limpieza
+                 - globals.set:
+                     id: limpiar
+                     value: "false"
+                 - logger.log: "Sali de limpiar"
+              else:
+                 - switch.turn_on: switch_cilindro
+                 - delay: 3s
+                 - switch.turn_off: switch_cilindro
+                 - globals.set:
+                     id: limpiar
+                     value: "true"
+                 - logger.log: "Sali sin limpiar"
+          - delay: 3min
